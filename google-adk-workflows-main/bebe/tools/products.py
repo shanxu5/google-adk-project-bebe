@@ -4,30 +4,73 @@ from .db import query_dicts, query_one
 def search_products(query_text: str,
                     max_price: float | None = None,
                     brand: str | None = None):
+    """
+    Loosened search with fallbacks:
+    1) Apply price/brand + text filters.
+    2) If none, drop price/brand, keep text.
+    3) If none, return top 10 by price (no filters).
+    """
+    q = query_text.strip() if query_text is not None else None
+    q_filter = q or None  # None skips text filter
+
     sql = """
-    WITH q AS (SELECT to_tsquery('english', %s) AS tsq)
     SELECT id, product_name, image_url, price, brand
     FROM product
-    WHERE (%s IS NULL OR price <= %s)
+    WHERE (%s IS NULL OR price::numeric <= %s::numeric)
       AND (%s IS NULL OR brand ILIKE %s)
-      AND (product_name ILIKE %s OR description ILIKE %s OR brand ILIKE %s)
+      AND (%s IS NULL
+           OR product_name ILIKE %s
+           OR description ILIKE %s
+           OR brand ILIKE %s)
     ORDER BY price ASC
     LIMIT 10;
     """
     params = (
-        query_text,          # for to_tsquery
         max_price, max_price,
         brand, f"%{brand}%" if brand else None,
-        f"%{query_text}%", f"%{query_text}%", f"%{query_text}%"
+        q_filter,
+        f"%{q_filter}%", f"%{q_filter}%", f"%{q_filter}%"
     )
-    return query_dicts(sql, params)
+    rows = query_dicts(sql, params)
+    if rows:
+        return rows
+
+    # Fallback: drop price/brand, keep text if provided
+    fallback_sql = """
+    SELECT id, product_name, image_url, price, brand
+    FROM product
+    WHERE (%s IS NULL
+           OR product_name ILIKE %s
+           OR description ILIKE %s
+           OR brand ILIKE %s)
+    ORDER BY price ASC
+    LIMIT 10;
+    """
+    fallback_params = (
+        q_filter,
+        f"%{q_filter}%", f"%{q_filter}%", f"%{q_filter}%"
+    )
+    rows = query_dicts(fallback_sql, fallback_params)
+    if rows:
+        return rows
+
+    # Final fallback: top 10 by price, no filters
+    return query_dicts(
+        """
+        SELECT id, product_name, image_url, price, brand
+        FROM product
+        ORDER BY price ASC
+        LIMIT 10;
+        """,
+        ()
+    )
 
 def product_summary(product_id: str):
     """
     PDP snippet: images, description, review summary, etc.
     """
     sql = """
-    SELECT id, name, description, image_url, price, brand,discount_amount
+    SELECT id, product_name, description, image_url, price, brand, discount_amount
     FROM product
     WHERE id = %s
     """
