@@ -1,37 +1,18 @@
 # src/bebe/tools/db.py
-from google.cloud.sql.connector import Connector, IPTypes
-import pg8000.native
 import os
 import psycopg2
 import psycopg2.extras
 
-
-# Connection name: project:region:instance
-INSTANCE_CONNECTION_NAME = os.getenv("qwiklabs-gcp-00-eaa89c0a0427:us-central1:bebedb")  # e.g., "my-project:us-central1:my-postgres"
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "Passwordc412345!")
-DB_NAME = os.getenv("DB_NAME", "bebedb")
-IP_TYPE = IPTypes.PRIVATE if os.getenv("PRIVATE_IP") else IPTypes.PUBLIC
-
-
-# Create a single connector; reuse across calls
-connector = Connector(refresh_strategy="LAZY")  # reduces background refreshes; good for dev/serverless patterns
+# Direct connection string (preferred for local/dev)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not set. Please set it in your .env (e.g., postgresql://user:pass@host:5432/dbname).")
 
 
 
 def get_conn():
-    """
-    Return a pg8000 DB-API connection via the Cloud SQL Python Connector.
-    """
-    conn = connector.connect(
-        INSTANCE_CONNECTION_NAME,
-        "pg8000",
-        user=DB_USER,
-        password=DB_PASS,
-        db=DB_NAME,
-        ip_type=IP_TYPE,
-    )
-    return conn
+    """Return a psycopg2 connection using DATABASE_URL."""
+    return psycopg2.connect(DATABASE_URL)
 
 
 def query_dicts(sql: str, params: tuple = ()):

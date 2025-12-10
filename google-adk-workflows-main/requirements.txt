@@ -20,3 +20,8 @@ loguru>=0.7.3
 # Optional: For enhanced functionality
 pydantic>=2.11.7
 httpx>=0.28.1 
+
+# Database connectivity
+psycopg2-binary>=2.9.11
+pg8000>=1.31.5
+cloud-sql-python-connector[pg8000]>=1.19.0
