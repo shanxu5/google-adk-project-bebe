@@ -54,3 +54,6 @@ def suggest_upsell(product_id: str):
     ORDER BY reviews_avg DESC, price ASC
     LIMIT 4;
     """
+
+def test_connection():
+    return query_dicts("SELECT current_user, current_database();")

@@ -40,7 +40,7 @@ tools = [
     agent_tool(fn=add_to_cart, name="add_to_cart",
          description="Add an item to the session cart with pricing."),
     agent_tool(fn=suggest_upsell, name="suggest_upsell",
-         description="Suggest upsell items by brand/category.")
+         description="Suggest upsell items by brand.")
 ]
 
 root_agent = LlmAgent(
